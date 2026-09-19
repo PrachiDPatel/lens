@@ -1,0 +1,56 @@
+{
+    "categories": [
+        "Other"
+    ],
+    "contributes": {
+        "commands": [
+            {
+                "command": "lens.copyContext",
+                "title": "Lens: Copy code context for AI"
+            },
+            {
+                "command": "lens.openPanel",
+                "title": "Lens: Open Lens panel"
+            }
+        ],
+        "menus": {
+            "editor/context": [
+                {
+                    "command": "lens.copyContext",
+                    "group": "lens",
+                    "when": "editorTextFocus"
+                }
+            ]
+        },
+        "views": {
+            "lens": [
+                {
+                    "id": "lens.panel",
+                    "name": "Lens",
+                    "type": "webview"
+                }
+            ]
+        },
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "icon": "media/lens.svg",
+                    "id": "lens",
+                    "title": "Lens"
+                }
+            ]
+        }
+    },
+    "description": "Show, don't screenshot. Copies rich code context \u2014 your file or selection, problems, and open files \u2014 to the clipboard so you can paste it into any AI chat.",
+    "displayName": "Lens",
+    "engines": {
+        "vscode": "^1.85.0"
+    },
+    "main": "./extension.js",
+    "name": "lens",
+    "publisher": "lens",
+    "scripts": {
+        "package": "vsce package"
+    },
+    "version": "0.1.0"
+}

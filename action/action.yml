@@ -1,0 +1,41 @@
+name: "Lens screenshots"
+description: "Screenshot a deployed web UI on every push — show, don't screenshot."
+
+inputs:
+  url:
+    description: "The page to screenshot (your deployed URL)."
+    required: true
+  name:
+    description: "Prefix for the screenshot files and the artifact name."
+    required: false
+    default: "page"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+
+    # Full Chromium + OS deps so headless screenshots work on stock runners.
+    - name: Install Playwright Chromium
+      shell: bash
+      run: npx -y playwright@latest install --with-deps chromium
+
+    - name: Screenshot desktop
+      shell: bash
+      run: npx -y playwright screenshot --viewport-size="1440,900" --full-page --wait-for-timeout 3000 "${{ inputs.url }}" "${{ inputs.name }}-desktop.png"
+
+    - name: Screenshot mobile
+      shell: bash
+      run: npx -y playwright screenshot --viewport-size="390,844" --full-page --wait-for-timeout 3000 "${{ inputs.url }}" "${{ inputs.name }}-mobile.png"
+
+    - name: Upload screenshots
+      uses: actions/upload-artifact@v4
+      with:
+        name: lens-${{ inputs.name }}
+        path: |
+          ${{ inputs.name }}-desktop.png
+          ${{ inputs.name }}-mobile.png
+        retention-days: 14

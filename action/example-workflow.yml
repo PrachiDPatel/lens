@@ -1,0 +1,37 @@
+# Example: screenshot your UI on every push with Lens
+#
+# Put this file at .github/workflows/lens.yml in your project repo.
+# It runs on pushes to main that touch frontend files, captures the
+# deployed UI, and uploads the screenshots as a workflow artifact.
+
+name: Lens UI screenshots
+
+"on":
+  push:
+    branches: [main]
+    paths:
+      # Adjust to the frontend files in your repo:
+      - 'index.html'
+      - 'app/**'
+      - 'src/**'
+
+jobs:
+  screenshots:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write # needed to upload the screenshot artifact
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Capture UI screenshots
+        uses: PrachiDPatel/lens/action@main
+        with:
+          # Replace with your deployed URL:
+          url: https://example.com
+          name: homepage
+
+      - name: Job summary
+        run: |
+          echo "Screenshots uploaded as artifact: lens-homepage"
+          echo "Screenshots uploaded as artifact **lens-homepage** (homepage-desktop.png, homepage-mobile.png)" >> "$GITHUB_STEP_SUMMARY"

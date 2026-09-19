@@ -1,0 +1,34 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body {
+    width: 220px; margin: 0; padding: 14px 16px 16px;
+    font-family: system-ui, -apple-system, sans-serif; font-size: 13px;
+    background: #1c1f26; color: #e8eaf0;
+  }
+  h1 { font-size: 15px; margin: 0; }
+  .tag { color: #9aa0ae; font-size: 11.5px; margin: 2px 0 12px; }
+  .row {
+    display: flex; align-items: center; gap: 8px; cursor: pointer;
+    background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);
+    border-radius: 9px; padding: 9px 10px; user-select: none;
+  }
+  .row input { accent-color: #3b6fe0; width: 15px; height: 15px; margin: 0; }
+  .hint { color: #9aa0ae; font-size: 11.5px; margin: 12px 0 0; }
+  kbd {
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14);
+    border-radius: 5px; padding: 1px 5px; font-size: 11px;
+    font-family: inherit;
+  }
+</style>
+</head>
+<body>
+  <h1>Lens</h1>
+  <p class="tag">show, don't screenshot</p>
+  <label class="row"><input type="checkbox" id="enabled"> Floating button</label>
+  <p class="hint">Shortcut: <kbd>Alt</kbd>+<kbd>L</kbd> (Mac: <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>L</kbd>) toggles the panel.</p>
+  <script src="popup.js"></script>
+</body>
+</html>
