@@ -17,6 +17,8 @@
   }
   .row input { accent-color: #3b6fe0; width: 15px; height: 15px; margin: 0; }
   .hint { color: #9aa0ae; font-size: 11.5px; margin: 12px 0 0; }
+  .hint a { color: #7aa2ff; text-decoration: none; }
+  .hint a:hover { text-decoration: underline; }
   kbd {
     background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.14);
     border-radius: 5px; padding: 1px 5px; font-size: 11px;
@@ -28,6 +30,7 @@
   <h1>Lens</h1>
   <p class="tag">show, don't screenshot</p>
   <label class="row"><input type="checkbox" id="enabled"> Floating button</label>
+  <p class="hint"><a href="#" id="api-settings">API settings</a> — bring your own key to send pages straight to Claude.</p>
   <p class="hint">Shortcut: <kbd>Alt</kbd>+<kbd>L</kbd> (Mac: <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>L</kbd>) toggles the panel.</p>
   <script src="popup.js"></script>
 </body>

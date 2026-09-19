@@ -1,0 +1,100 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Lens API settings</title>
+<style>
+  :root { color-scheme: light; }
+  body {
+    margin: 0; padding: 40px 20px;
+    font-family: system-ui, -apple-system, sans-serif; font-size: 14px;
+    background: #f4f5f7; color: #1c1f26; line-height: 1.5;
+  }
+  main { max-width: 560px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0; }
+  .tag { color: #6b7280; font-size: 13px; margin: 4px 0 28px; }
+  section {
+    background: #fff; border: 1px solid #e2e4e9; border-radius: 12px;
+    padding: 18px 20px; margin-bottom: 16px;
+  }
+  h2 { font-size: 14px; margin: 0 0 10px; text-transform: uppercase;
+       letter-spacing: .04em; color: #6b7280; }
+  .provider { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+  .provider input { accent-color: #3b6fe0; }
+  .note { color: #6b7280; font-size: 13px; margin: 10px 0 0; }
+  .keyrow { display: flex; gap: 8px; }
+  #api-key {
+    flex: 1; font: inherit; padding: 9px 12px; border: 1px solid #c9cdd6;
+    border-radius: 8px; font-family: ui-monospace, monospace; font-size: 13px;
+  }
+  #api-key:focus { outline: 2px solid #3b6fe0; outline-offset: 1px; border-color: transparent; }
+  button {
+    font: inherit; font-weight: 600; cursor: pointer; border-radius: 8px;
+    padding: 9px 16px; border: 1px solid #c9cdd6; background: #fff; color: #1c1f26;
+  }
+  button:hover:not(:disabled) { background: #eef0f4; }
+  button:disabled { opacity: .5; cursor: default; }
+  #save { background: #3b6fe0; border-color: #3b6fe0; color: #fff; }
+  #save:hover:not(:disabled) { background: #2f5cc8; }
+  .status { min-height: 20px; font-size: 13px; margin: 10px 0 0; color: #2f7a4d; }
+  .status.err { color: #b3261e; }
+  .saved { font-size: 13px; color: #2f7a4d; margin: 0 0 10px; }
+  .linklike {
+    background: none; border: 0; padding: 0; color: #b3261e;
+    font-weight: 500; font-size: 13px; margin-top: 8px;
+  }
+  .linklike:hover { text-decoration: underline; background: none; }
+  #model { font: inherit; padding: 9px 12px; border: 1px solid #c9cdd6;
+           border-radius: 8px; max-width: 100%; }
+  #model:disabled { background: #f4f5f7; color: #9aa0ae; }
+  .privacy p { font-size: 13px; color: #4b5563; margin: 0; }
+  .getkey { font-size: 13px; margin: 10px 0 0; }
+  .getkey a { color: #3b6fe0; }
+</style>
+</head>
+<body>
+  <main>
+    <h1>Lens API settings</h1>
+    <p class="tag">show, don't screenshot</p>
+
+    <section>
+      <h2>Provider</h2>
+      <label class="provider"><input type="radio" checked disabled> Anthropic</label>
+      <p class="note">More providers later. Direct-send is optional &mdash; the
+      copy buttons keep working with no key at all.</p>
+    </section>
+
+    <section>
+      <h2>API key</h2>
+      <p class="saved" id="key-saved" hidden>A key is already saved in this browser. Saving a new one replaces it.</p>
+      <div class="keyrow">
+        <input type="password" id="api-key" placeholder="sk-ant-&hellip;"
+               autocomplete="off" spellcheck="false" aria-label="Anthropic API key">
+        <button id="save">Save</button>
+      </div>
+      <p class="getkey">Need one? Create it in the
+        <a href="https://console.anthropic.com/" target="_blank" rel="noopener">Anthropic console</a>.
+      </p>
+      <p class="status" id="status" aria-live="polite"></p>
+      <button class="linklike" id="remove" hidden>Remove saved key</button>
+    </section>
+
+    <section>
+      <h2>Model</h2>
+      <select id="model" disabled aria-label="Model"><option>Save a key first</option></select>
+      <p class="note">The list is fetched from your account each time a key is
+      saved &mdash; nothing is hardcoded.</p>
+    </section>
+
+    <section class="privacy">
+      <h2>Privacy</h2>
+      <p>Your key lives in this browser profile's local storage. It is not
+      encrypted at rest &mdash; anyone with access to the profile could read it,
+      so prefer a key you can rotate. Requests go directly from your browser to
+      api.anthropic.com; there is no middleman. The key is only ever sent to
+      Anthropic, and only when you click <strong>Send to Claude</strong>.</p>
+    </section>
+  </main>
+  <script src="options.js"></script>
+</body>
+</html>

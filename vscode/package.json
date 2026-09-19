@@ -9,14 +9,50 @@
                 "title": "Lens: Copy code context for AI"
             },
             {
+                "command": "lens.askCopilot",
+                "title": "Lens: Ask Copilot about this code"
+            },
+            {
+                "command": "lens.setApiKey",
+                "title": "Lens: Set Anthropic API key"
+            },
+            {
+                "command": "lens.deleteApiKey",
+                "title": "Lens: Delete Anthropic API key"
+            },
+            {
+                "command": "lens.sendToClaude",
+                "title": "Lens: Send to Claude"
+            },
+            {
                 "command": "lens.openPanel",
                 "title": "Lens: Open Lens panel"
             }
         ],
+        "configuration": {
+            "title": "Lens",
+            "properties": {
+                "lens.anthropicModel": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Claude model id used by Lens direct-send. Set automatically when you save an API key, picked from your account's own model list."
+                }
+            }
+        },
         "menus": {
             "editor/context": [
                 {
                     "command": "lens.copyContext",
+                    "group": "lens",
+                    "when": "editorTextFocus"
+                },
+                {
+                    "command": "lens.askCopilot",
+                    "group": "lens",
+                    "when": "editorTextFocus"
+                },
+                {
+                    "command": "lens.sendToClaude",
                     "group": "lens",
                     "when": "editorTextFocus"
                 }

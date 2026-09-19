@@ -14,6 +14,7 @@
 
   const MAX_TEXT_CHARS = 8000; // how much page text goes into the bundle
   const STORAGE_KEY = "lensEnabled";
+  const API_KEY_STORE = "lensApiKey"; // chrome.storage.local — presence enables direct-send
 
   /* ---------- styles (live inside the shadow root) ---------- */
   const CSS = `
@@ -90,6 +91,20 @@
     }
     #lens-toast[hidden] { display: none; }
     #lens-toast.lens-err { background: #5c1a1a; color: #f6d9d9; }
+    #lens-actions button[hidden] { display: none; }
+    #lens-response {
+      max-height: 220px; overflow-y: auto; white-space: pre-wrap; word-break: break-word;
+      background: #12151c; border: 1px solid rgba(255,255,255,.12);
+      border-radius: 8px; padding: 8px 10px; font-size: 12.5px;
+    }
+    #lens-response[hidden] { display: none; }
+    #lens-copy-response {
+      font: inherit; font-weight: 600; cursor: pointer; border-radius: 9px;
+      padding: 8px 10px; border: 1px solid rgba(255,255,255,.14);
+      background: #2a2f3a; color: #e8eaf0; width: 100%;
+    }
+    #lens-copy-response:hover { background: #343b48; }
+    #lens-copy-response[hidden] { display: none; }
   `;
 
   /* ---------- shadow host (single top-level stacking context) ---------- */
@@ -128,6 +143,7 @@
     <div id="lens-header">
       <span>Lens</span>
       <span class="lens-controls">
+        <button id="lens-settings" title="API settings" aria-label="API settings">⚙</button>
         <button id="lens-min" title="Minimize" aria-label="Minimize panel">–</button>
         <button id="lens-close" title="Close" aria-label="Close panel">×</button>
       </span>
@@ -141,9 +157,12 @@
       <textarea id="lens-q" placeholder="Ask about this page…"></textarea>
       <div id="lens-actions">
         <button id="lens-copy-ai" class="lens-primary">Copy for AI</button>
+        <button id="lens-send" class="lens-primary" hidden>Send to Claude</button>
         <button id="lens-copy-text">Copy text only</button>
         <button id="lens-copy-shot">Screenshot only</button>
       </div>
+      <div id="lens-response" hidden></div>
+      <button id="lens-copy-response" hidden>Copy response</button>
       <div id="lens-toast" hidden></div>
     </div>`;
   shadow.appendChild(panel);
@@ -156,6 +175,9 @@
   const noteEl = $("lens-note");
   const questionEl = $("lens-q");
   const toastEl = $("lens-toast");
+  const responseEl = $("lens-response");
+  const copyResponseBtn = $("lens-copy-response");
+  const sendBtn = $("lens-send");
   const actionButtons = [...panel.querySelectorAll("#lens-actions button")];
 
   /* ---------- drag helper (pointer-based; click still works) ---------- */
@@ -216,6 +238,7 @@
     if (open) {
       body.classList.remove("lens-min");
       refreshPageInfo();
+      refreshSendButton();
     }
   }
 
@@ -351,6 +374,94 @@
   $("lens-copy-ai").addEventListener("click", copyForAI);
   $("lens-copy-text").addEventListener("click", copyTextOnly);
   $("lens-copy-shot").addEventListener("click", copyScreenshotOnly);
+  $("lens-settings").addEventListener("click", () => chrome.runtime.openOptionsPage());
+  $("lens-send").addEventListener("click", sendToClaude);
+  copyResponseBtn.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(responseEl.textContent);
+      toast("Response copied");
+    } catch (_err) {
+      toast("Copy failed", true);
+    }
+  });
+
+  /* ---------- direct-send to Claude (bring your own key) ---------- */
+
+  // The Send button only appears once a key is saved in API settings.
+  function refreshSendButton() {
+    chrome.storage.local.get({ [API_KEY_STORE]: null }, (v) => {
+      sendBtn.hidden = !v[API_KEY_STORE];
+    });
+  }
+
+  function showResponse(text) {
+    responseEl.textContent = text;
+    responseEl.hidden = false;
+    copyResponseBtn.hidden = false;
+  }
+
+  function hideResponse() {
+    responseEl.hidden = true;
+    copyResponseBtn.hidden = true;
+  }
+
+  function sendMessageAsync(message) {
+    return new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage(message, (resp) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+        } else {
+          resolve(resp);
+        }
+      });
+    });
+  }
+
+  async function sendToClaude() {
+    hideResponse();
+    setBusy(true);
+    toast("Sending…");
+    try {
+      const question = questionEl.value.trim();
+      let imageBase64 = null;
+      try {
+        const dataUrl = await requestScreenshot();
+        const prefix = "data:image/png;base64,";
+        imageBase64 = dataUrl.startsWith(prefix) ? dataUrl.slice(prefix.length) : null;
+      } catch (_shotErr) {
+        // Same permission edge as the copy flow — the worker sends text-only.
+      }
+      const resp = await sendMessageAsync({
+        type: "lens-send",
+        question,
+        title: document.title || "(no title)",
+        url: location.href,
+        pageText: pageText(),
+        imageBase64,
+      });
+      const err = resp ? resp.error : null;
+      const status = resp ? resp.status : 0;
+      if (!resp || !resp.ok) {
+        if (err === "auth" || status === 401 || status === 403) {
+          toast("Check your API key in Settings.", true);
+        } else if (err === "no-key") {
+          toast("Add an API key in Settings first.", true);
+        } else if (err === "no-model") {
+          toast("Pick a model in Settings first.", true);
+        } else {
+          toast("Send failed — try again.", true);
+        }
+        refreshSendButton(); // key may have been removed while the panel was open
+        return;
+      }
+      showResponse(resp.text || "(empty response)");
+      toast("Answer received");
+    } catch (err) {
+      toast("Send failed: " + (err && err.message ? err.message : err), true);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   /* ---------- global on/off (toolbar popup toggle) ---------- */
   function applyEnabled(enabled) {
@@ -363,6 +474,9 @@
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area === "sync" && changes[STORAGE_KEY]) {
       applyEnabled(changes[STORAGE_KEY].newValue !== false);
+    }
+    if (area === "local" && changes[API_KEY_STORE] && !panel.hidden) {
+      refreshSendButton();
     }
   });
 })();

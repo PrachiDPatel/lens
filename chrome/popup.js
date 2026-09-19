@@ -15,4 +15,9 @@
   box.addEventListener("change", () => {
     chrome.storage.sync.set({ [STORAGE_KEY]: box.checked });
   });
+
+  document.getElementById("api-settings").addEventListener("click", (e) => {
+    e.preventDefault();
+    chrome.runtime.openOptionsPage();
+  });
 })();

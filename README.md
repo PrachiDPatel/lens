@@ -2,14 +2,14 @@
 
 One idea, three tools: stop taking manual screenshots to ask an AI about what's
 on your screen. Capture rich context in one click and paste it into any AI chat
-(Muse, Claude, anything else). No backend, no API keys, no accounts — the
-clipboard is the transport.
+(Muse, Claude, anything else). No backend, no accounts — the clipboard is the
+default transport, with optional bring-your-own-key direct-send.
 
 ## The three pieces
 
 | Tool | Where it lives | What it does |
 |---|---|---|
-| `chrome/` | Chrome toolbar + any page | Floating draggable button on every page. Opens a small panel: type your question, hit **Copy for AI**, and the tab's screenshot + page text + your question land on the clipboard together. |
+| `chrome/` | Chrome toolbar + any page | Floating draggable button on every page. Opens a small panel: type your question, hit **Copy for AI**, and the tab's screenshot + page text + your question land on the clipboard together. Optional bring-your-own-key direct-send to Claude from the panel. |
 | `vscode/` | VS Code | Command palette / right-click / sidebar panel: **Lens: Copy code context for AI**. Copies your question + the file or selection + errors/warnings + open files as markdown. |
 | `action/` | GitHub Actions | On push, screenshots a deployed URL at desktop + mobile sizes with Playwright and uploads the PNGs as artifacts — so the UI review loop never needs a manual screenshot again. |
 
