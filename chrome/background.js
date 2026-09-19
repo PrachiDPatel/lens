@@ -47,7 +47,8 @@ async function validateKey(key) {
 }
 
 /* Send page context to Claude.
- * msg: {question, title, url, pageText, imageBase64|null}.
+ * msg: {question, title, url, shotLabel, elementText, diagText, pageText,
+ *        imageBase64|null, beforeBase64|null}.
  * Returns {ok:true, text} or {ok:false, error|status}. */
 async function sendToClaude(msg) {
   const { [KEY_STORE]: key } = await chrome.storage.local.get(KEY_STORE);
@@ -58,16 +59,44 @@ async function sendToClaude(msg) {
   const parts = [];
   if (msg.question) parts.push(msg.question, "");
   parts.push(`Page: ${msg.title || "(no title)"} (${msg.url})`, "");
+  parts.push(`Screenshot: ${msg.shotLabel || "viewport"}`, "");
+  if (msg.elementText) parts.push(msg.elementText, "");
+  if (msg.diagText) parts.push(msg.diagText, "");
   parts.push(msg.pageText || "");
 
+  const hasBefore = !!msg.beforeBase64;
+  const hasAfter = !!msg.imageBase64;
+
   const content = [];
-  if (msg.imageBase64) {
+  if (hasBefore) {
+    content.push({
+      type: "image",
+      source: { type: "base64", media_type: "image/png", data: msg.beforeBase64 },
+    });
+  }
+  if (hasAfter) {
     content.push({
       type: "image",
       source: { type: "base64", media_type: "image/png", data: msg.imageBase64 },
     });
   }
+  if (hasBefore && hasAfter) {
+    parts.push(
+      "",
+      "Two screenshots are attached, in order: BEFORE (the earlier state the " +
+        "user saved) and AFTER (the current state). Compare them when answering."
+    );
+  }
   content.push({ type: "text", text: parts.join("\n") });
+
+  let system =
+    "You are helping a developer who is looking at a webpage. " +
+    "A screenshot and the page text are attached. Answer their question about the page.";
+  if (hasBefore && hasAfter) {
+    system +=
+      " The user attached a before and an after screenshot — describe what " +
+      "changed between them as part of your answer.";
+  }
 
   try {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -76,9 +105,7 @@ async function sendToClaude(msg) {
       body: JSON.stringify({
         model,
         max_tokens: 1024,
-        system:
-          "You are helping a developer who is looking at a webpage. " +
-          "A screenshot and the page text are attached. Answer their question about the page.",
+        system,
         messages: [{ role: "user", content }],
       }),
     });

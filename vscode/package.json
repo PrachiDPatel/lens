@@ -25,6 +25,10 @@
                 "title": "Lens: Send to Claude"
             },
             {
+                "command": "lens.runAndAttach",
+                "title": "Lens: Run command and attach output"
+            },
+            {
                 "command": "lens.openPanel",
                 "title": "Lens: Open Lens panel"
             }

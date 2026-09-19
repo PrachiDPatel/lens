@@ -9,7 +9,7 @@ default transport, with optional bring-your-own-key direct-send.
 
 | Tool | Where it lives | What it does |
 |---|---|---|
-| `chrome/` | Chrome toolbar + any page | Floating draggable button on every page. Opens a small panel: type your question, hit **Copy for AI**, and the tab's screenshot + page text + your question land on the clipboard together. Optional bring-your-own-key direct-send to Claude from the panel. |
+| `chrome/` | Chrome toolbar + any page | Floating draggable button on every page. Opens a small panel: type your question, press **Enter**, and the tab's screenshot + page text + console errors go straight to Claude with your saved API key (or to the clipboard with **Copy for AI** — no key needed). |
 | `vscode/` | VS Code | Command palette / right-click / sidebar panel: **Lens: Copy code context for AI**. Copies your question + the file or selection + errors/warnings + open files as markdown. |
 | `action/` | GitHub Actions | On push, screenshots a deployed URL at desktop + mobile sizes with Playwright and uploads the PNGs as artifacts — so the UI review loop never needs a manual screenshot again. |
 

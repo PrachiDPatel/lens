@@ -5,11 +5,22 @@
 // or to Claude with your own API key (kept in the OS keychain).
 
 const vscode = require('vscode');
+const { exec } = require('child_process');
 
 // Caps so one copy never turns into a novel.
 const MAX_LINES = 400;
 const MAX_PROBLEMS = 30;
 const MAX_OPEN_FILES = 20;
+
+// Terminal runs: 60 seconds max, output capped so a chatty command can't
+// flood the bundle.
+const CMD_TIMEOUT_MS = 60000;
+const MAX_TERM_CHARS = 4000;
+
+// The most recent terminal run attached by "Lens: Run command and attach
+// output". Picked up by buildBundle, so it flows into Copy context,
+// Ask Copilot, and Send to Claude automatically.
+let lastTerminal = undefined;
 
 // Anthropic direct-send. The key lives ONLY in SecretStorage (the OS
 // keychain) — never in settings files, never in logs, never in a URL.
@@ -91,6 +102,24 @@ function captureContext(include) {
 }
 
 /**
+ * Append the attached terminal output to a bundle in progress.
+ * @param {string[]} parts bundle sections being built
+ */
+function appendTerminalSection(parts) {
+  if (!lastTerminal) {
+    return;
+  }
+  const t = lastTerminal;
+  let out = t.output;
+  if (t.truncated) {
+    out += `\n…truncated (showing first ${MAX_TERM_CHARS} of ${t.totalChars} characters)`;
+  }
+  parts.push(
+    `## Terminal output ($ ${t.cmd}) — exit ${t.exitCode}\n\`\`\`text\n${out}\n\`\`\``
+  );
+}
+
+/**
  * Build the markdown bundle: her question first, then the captured context.
  * @param {string} question what the user wants to ask about the code
  * @param {object} ctx from captureContext
@@ -106,6 +135,7 @@ function buildBundle(question, ctx) {
   // No editor — say so plainly instead of faking context.
   if (ctx.noEditor) {
     parts.push('_No editor open — no code context captured._');
+    appendTerminalSection(parts);
     return parts.join('\n\n');
   }
 
@@ -139,6 +169,9 @@ function buildBundle(question, ctx) {
   if (ctx.openFiles !== undefined && ctx.openFiles.length > 0) {
     parts.push('## Open files\n' + ctx.openFiles.map((f) => `- ${f}`).join('\n'));
   }
+
+  // --- Attached terminal output (set by "Run command and attach output") ---
+  appendTerminalSection(parts);
 
   return parts.join('\n\n');
 }
@@ -539,6 +572,112 @@ async function sendToClaude(context, provider, args) {
 }
 
 /**
+ * Run a shell command and resolve with its output and exit code.
+ * Never rejects — a failed or timed-out command is still captured.
+ * @param {string} cmd
+ * @param {string|undefined} cwd
+ * @returns {Promise<{exitCode: number|string, timedOut: boolean, stdout: string, stderr: string}>}
+ */
+function runShell(cmd, cwd) {
+  return new Promise((resolve) => {
+    exec(
+      cmd,
+      { cwd, timeout: CMD_TIMEOUT_MS, maxBuffer: 10 * 1024 * 1024 },
+      (err, stdout, stderr) => {
+        if (err && err.killed) {
+          resolve({
+            exitCode: `timed out after ${CMD_TIMEOUT_MS / 1000}s`,
+            timedOut: true,
+            stdout: stdout || '',
+            stderr: stderr || '',
+          });
+          return;
+        }
+        resolve({
+          exitCode: err ? (typeof err.code === 'number' ? err.code : 1) : 0,
+          timedOut: false,
+          stdout: stdout || '',
+          stderr: stderr || '',
+        });
+      }
+    );
+  });
+}
+
+/**
+ * Ask for a shell command, run it in the workspace root, and attach its
+ * output to the next bundle. The user typed the command, so whatever it
+ * printed is theirs to share — still truncated hard at MAX_TERM_CHARS.
+ * @param {LensPanelProvider} provider the sidebar panel (status surface)
+ */
+async function runAndAttach(provider) {
+  const cmd = await vscode.window.showInputBox({
+    prompt: 'Shell command to run in the workspace root…',
+    placeHolder: 'e.g. npm test',
+  });
+  if (cmd === undefined) {
+    return; // the user cancelled — do nothing
+  }
+  const trimmed = cmd.trim();
+  if (!trimmed) {
+    vscode.window.showWarningMessage('No command entered — nothing was attached.');
+    return;
+  }
+
+  const folders = vscode.workspace.workspaceFolders;
+  const cwd =
+    folders && folders.length > 0 ? folders[0].uri.fsPath : undefined;
+
+  const result = await runShell(trimmed, cwd);
+  let output = '';
+  if (result.stdout) {
+    output += result.stdout;
+  }
+  if (result.stderr) {
+    output += (output ? '\n' : '') + '[stderr]\n' + result.stderr;
+  }
+  output = output.replace(/\s+$/, '');
+  if (!output) {
+    output = '(no output)';
+  }
+  const totalChars = output.length;
+  const truncated = totalChars > MAX_TERM_CHARS;
+  if (truncated) {
+    output = output.slice(0, MAX_TERM_CHARS);
+  }
+
+  lastTerminal = {
+    cmd: trimmed,
+    exitCode: result.exitCode,
+    output,
+    truncated,
+    totalChars,
+  };
+
+  if (provider) {
+    provider.postMessage({
+      type: 'terminal-attached',
+      cmd: trimmed,
+      exitCode: String(result.exitCode),
+    });
+  }
+  vscode.window.showInformationMessage(
+    `Lens attached terminal output: $ ${trimmed} (exit ${result.exitCode})`
+  );
+}
+
+/**
+ * Drop the attached terminal output from future bundles.
+ * @param {LensPanelProvider} provider
+ */
+function clearTerminalOutput(provider) {
+  lastTerminal = undefined;
+  if (provider) {
+    provider.postMessage({ type: 'terminal-cleared' });
+  }
+}
+
+/**
  * Webview provider for the Lens sidebar panel. Also the response surface for
  * Copilot and Claude answers.
  */
@@ -603,6 +742,10 @@ class LensPanelProvider {
           question: msg.question || '',
           include: msg.include,
         });
+      } else if (msg.type === 'run-attach') {
+        runAndAttach(this);
+      } else if (msg.type === 'clear-terminal') {
+        clearTerminalOutput(this);
       } else if (msg.type === 'copilot-copy') {
         vscode.env.clipboard
           .writeText(this.lastResponse || '')
@@ -669,6 +812,17 @@ function getPanelHtml(webview) {
   button:hover { background: var(--vscode-button-hoverBackground); }
   button:disabled { opacity: 0.5; cursor: default; }
   #status { font-size: 12px; color: var(--vscode-descriptionForeground); margin-top: 8px; min-height: 16px; }
+  #terminal-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--vscode-descriptionForeground);
+  }
+  #terminal-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #terminal-clear { width: auto; margin-top: 0; padding: 4px 10px; font-size: 12px; }
   #response {
     white-space: pre-wrap;
     font-size: 12.5px;
@@ -696,6 +850,13 @@ function getPanelHtml(webview) {
     <button id="copy">Copy context</button>
     <button id="ask">Ask Copilot</button>
     <button id="send-claude" hidden>Send to Claude</button>
+  </div>
+  <div class="row">
+    <button id="run-attach">Run &amp; attach</button>
+  </div>
+  <div id="terminal-row" hidden>
+    <span id="terminal-label"></span>
+    <button id="terminal-clear">Clear</button>
   </div>
   <div id="status"></div>
   <div id="response-wrap" hidden>
@@ -735,6 +896,13 @@ function getPanelHtml(webview) {
       $('copy-response').addEventListener('click', () => {
         vscode.postMessage({ type: 'copilot-copy' });
       });
+      $('run-attach').addEventListener('click', () => {
+        $('status').textContent = 'Running…';
+        vscode.postMessage({ type: 'run-attach' });
+      });
+      $('terminal-clear').addEventListener('click', () => {
+        vscode.postMessage({ type: 'clear-terminal' });
+      });
       $('send-claude').addEventListener('click', () => {
         $('response').textContent = '';
         $('response-wrap').hidden = false;
@@ -773,6 +941,14 @@ function getPanelHtml(webview) {
           $('copy-response').disabled = false;
         } else if (d.type === 'claude-error') {
           $('status').textContent = d.message || 'Claude hit an error.';
+        } else if (d.type === 'terminal-attached') {
+          $('terminal-label').textContent = '$ ' + (d.cmd || '') + ' (exit ' + (d.exitCode || '?') + ')';
+          $('terminal-row').hidden = false;
+          $('status').textContent = 'Attached — included in your next copy or send.';
+        } else if (d.type === 'terminal-cleared') {
+          $('terminal-row').hidden = true;
+          $('terminal-label').textContent = '';
+          $('status').textContent = 'Terminal output cleared.';
         }
       });
     })();
@@ -807,6 +983,9 @@ function activate(context) {
     ),
     vscode.commands.registerCommand('lens.sendToClaude', (args) =>
       sendToClaude(context, provider, args)
+    ),
+    vscode.commands.registerCommand('lens.runAndAttach', (args) =>
+      runAndAttach(provider)
     ),
     vscode.commands.registerCommand('lens.openPanel', () =>
       vscode.commands.executeCommand('lens.panel.focus')

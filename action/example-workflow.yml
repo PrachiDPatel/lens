@@ -1,8 +1,11 @@
-# Example: screenshot your UI on every push with Lens
+# Example: screenshot your UI on every push and diff it on pull requests with Lens
 #
 # Put this file at .github/workflows/lens.yml in your project repo.
-# It runs on pushes to main that touch frontend files, captures the
-# deployed UI, and uploads the screenshots as a workflow artifact.
+#
+# - On pushes to main that touch frontend files, it captures the deployed UI
+#   and uploads the screenshots as a workflow artifact.
+# - On pull requests, it diffs your PR deploy preview against production and
+#   uploads the base, head, and visual-diff screenshots as one artifact.
 
 name: Lens UI screenshots
 
@@ -14,9 +17,15 @@ name: Lens UI screenshots
       - 'index.html'
       - 'app/**'
       - 'src/**'
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'app/**'
+      - 'src/**'
 
 jobs:
   screenshots:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -35,3 +44,26 @@ jobs:
         run: |
           echo "Screenshots uploaded as artifact: lens-homepage"
           echo "Screenshots uploaded as artifact **lens-homepage** (homepage-desktop.png, homepage-mobile.png)" >> "$GITHUB_STEP_SUMMARY"
+
+  visual-regression:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write # needed to upload the screenshot artifact
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Diff PR preview against production
+        uses: PrachiDPatel/lens/action@main
+        with:
+          # Replace with your PR deploy preview URL:
+          url: https://pr-${{ github.event.pull_request.number }}-preview.example.com
+          # Replace with your production URL:
+          base-url: https://example.com
+          name: pr-preview
+
+      - name: Job summary
+        run: |
+          echo "Visual diff uploaded as artifact: lens-pr-preview"
+          echo "Visual diff uploaded as artifact **lens-pr-preview** (pr-preview-base-*.png, pr-preview-*.png, pr-preview-*-diff.png)" >> "$GITHUB_STEP_SUMMARY"

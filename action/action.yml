@@ -9,6 +9,10 @@ inputs:
     description: "Prefix for the screenshot files and the artifact name."
     required: false
     default: "page"
+  base-url:
+    description: "Optional base URL to diff against (e.g. production). When set, Lens also captures base screenshots and generates desktop-diff.png / mobile-diff.png visual diffs."
+    required: false
+    default: ""
 
 runs:
   using: "composite"
@@ -31,11 +35,39 @@ runs:
       shell: bash
       run: npx -y playwright screenshot --viewport-size="390,844" --full-page --wait-for-timeout 3000 "${{ inputs.url }}" "${{ inputs.name }}-mobile.png"
 
+    # Visual regression: capture the same viewports at base-url, then diff.
+    - name: Screenshot base desktop
+      if: inputs.base-url != ''
+      shell: bash
+      run: npx -y playwright screenshot --viewport-size="1440,900" --full-page --wait-for-timeout 3000 "${{ inputs.base-url }}" "${{ inputs.name }}-base-desktop.png"
+
+    - name: Screenshot base mobile
+      if: inputs.base-url != ''
+      shell: bash
+      run: npx -y playwright screenshot --viewport-size="390,844" --full-page --wait-for-timeout 3000 "${{ inputs.base-url }}" "${{ inputs.name }}-base-mobile.png"
+
+    - name: Install diff dependencies
+      if: inputs.base-url != ''
+      shell: bash
+      run: |
+        DIFF_DIR="${{ runner.temp }}/lens-diff"
+        mkdir -p "$DIFF_DIR"
+        cp "${{ github.action_path }}/diff.js" "$DIFF_DIR/diff.js"
+        cd "$DIFF_DIR"
+        # pixelmatch@5 is the last CommonJS release (v6+ is ESM-only).
+        npm init -y >/dev/null 2>&1
+        npm install --no-audit --no-fund pixelmatch@5 pngjs
+        echo "LENS_DIFF_DIR=$DIFF_DIR" >> "$GITHUB_ENV"
+
+    - name: Generate visual diffs
+      if: inputs.base-url != ''
+      shell: bash
+      run: node "${{ env.LENS_DIFF_DIR }}/diff.js" "${{ inputs.name }}"
+
     - name: Upload screenshots
       uses: actions/upload-artifact@v4
       with:
         name: lens-${{ inputs.name }}
         path: |
-          ${{ inputs.name }}-desktop.png
-          ${{ inputs.name }}-mobile.png
+          ${{ inputs.name }}-*.png
         retention-days: 14

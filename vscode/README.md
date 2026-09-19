@@ -33,8 +33,16 @@ sending screenshots.
   Lens offers to set one.
 - **Lens: Open Lens panel** (`lens.openPanel`) — opens the Lens sidebar, with a
   question box, include-checkboxes (file/selection, problems, open files), a
-  **Copy context** button, an **Ask Copilot** button, and a **Send to Claude**
-  button (the last one appears only once a key is saved).
+  **Copy context** button, an **Ask Copilot** button, a **Run & attach**
+  button, and a **Send to Claude** button (the last one appears only once a
+  key is saved).
+- **Lens: Run command and attach output** (`lens.runAndAttach`) — prompts for
+  a shell command, runs it in the workspace root (60-second timeout), and
+  attaches stdout + stderr (capped at 4,000 characters) to the bundle as a
+  "Terminal output ($ <cmd>)" section with the exit code, so it flows into
+  Copy context, Ask Copilot, and Send to Claude automatically. The panel's
+  **Run & attach** button does the same and shows the attached command with
+  a **Clear** button to drop it.
 - Also available from the editor right-click menu when text is focused.
 
 ### GitHub Copilot direct-send
@@ -75,6 +83,17 @@ Why is this throwing on line 42?
 
 ## Open files
 - src/routes.js
+```
+
+With a terminal run attached, the bundle also ends with:
+
+```markdown
+## Terminal output ($ npm test) — exit 1
+```text
+…
+[stderr]
+…
+```
 ```
 
 ## Run in dev
