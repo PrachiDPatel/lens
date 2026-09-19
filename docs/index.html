@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lens — show, don't screenshot</title>
+<meta name="description" content="Lens is a floating assistant in Chrome and VS Code that auto-captures page and code context when you ask an AI something. No manual screenshots, no copy-paste.">
+<style>
+  :root {
+    --bg: #101214;
+    --panel: #17191c;
+    --border: #2a2d31;
+    --text: #d8dbde;
+    --muted: #9a9ea4;
+    --accent: #7fb0d8;
+    --accent-hover: #9cc4e4;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
+  }
+  main { max-width: 720px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+  header { margin-bottom: 2.5rem; }
+  h1 { font-size: 2rem; margin: 0 0 0.5rem; letter-spacing: -0.01em; }
+  h2 { font-size: 1.25rem; margin: 2.5rem 0 0.75rem; }
+  p { margin: 0.6rem 0; }
+  .tagline { color: var(--muted); font-size: 1.1rem; }
+  .buttons { display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 1.2rem 0; }
+  .btn {
+    display: inline-block;
+    padding: 0.65rem 1.1rem;
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 0.95rem;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent-hover); }
+  .btn.primary { background: #1d3a52; border-color: #2c5375; }
+  .btn.primary:hover { background: #25465f; }
+  .note { font-size: 0.85rem; color: var(--muted); }
+  pre {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.9rem 1rem;
+    overflow-x: auto;
+    font-size: 0.85rem;
+    line-height: 1.5;
+  }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  ol, ul { padding-left: 1.4rem; }
+  li { margin: 0.35rem 0; }
+  .security {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+  }
+  .security ul { margin: 0.5rem 0; }
+  footer { margin-top: 3rem; color: var(--muted); font-size: 0.85rem; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <h1>Lens</h1>
+  <p class="tagline">Show, don't screenshot.</p>
+</header>
+
+<section>
+  <h2>What it is</h2>
+  <p>Lens is a small floating assistant that lives in Chrome and VS Code. When you ask an AI a question, it automatically captures the relevant context — a screenshot, the page text, and console errors in the browser; your file or selection, problems, and open files in the editor — and sends it along with your question. No manual screenshots, no copy-paste loop.</p>
+</section>
+
+<section>
+  <h2>Download</h2>
+  <div class="buttons">
+    <a class="btn primary" href="https://raw.githubusercontent.com/PrachiDPatel/lens/main/downloads/v1.2.0/lens-chrome.zip">Chrome extension (.zip)</a>
+    <a class="btn primary" href="https://raw.githubusercontent.com/PrachiDPatel/lens/main/downloads/v1.2.0/lens-vscode.vsix">VS Code extension (.vsix)</a>
+    <a class="btn" href="https://raw.githubusercontent.com/PrachiDPatel/lens/main/downloads/v1.2.0/install.ps1">install.ps1</a>
+    <a class="btn" href="https://raw.githubusercontent.com/PrachiDPatel/lens/main/downloads/v1.2.0/install.sh">install.sh</a>
+    <a class="btn" href="https://raw.githubusercontent.com/PrachiDPatel/lens/main/downloads/v1.2.0/SHA256SUMS">SHA256 checksums</a>
+  </div>
+  <p class="note">Downloads live in the repo under <code>downloads/</code>, versioned per release. Prefer the scripts? They're plain text — read them before you run them.</p>
+</section>
+
+<section>
+  <h2>Install — Chrome</h2>
+  <ol>
+    <li>Download <code>lens-chrome.zip</code> and unzip it somewhere permanent.</li>
+    <li>Open <code>chrome://extensions</code>, turn on <strong>Developer mode</strong>.</li>
+    <li>Click <strong>Load unpacked</strong> and select the unzipped folder.</li>
+    <li>Press <code>Alt+L</code> (<code>⌘⇧L</code> on Mac) on any page. Opening the panel with the shortcut is what grants the one-time permission screenshots need.</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Install — VS Code</h2>
+  <p>With the <code>.vsix</code> downloaded:</p>
+  <pre><code>code --install-extension lens-vscode.vsix</code></pre>
+  <p>Or run the install script, which downloads and installs it for you:</p>
+  <pre><code># Windows (PowerShell)
+.\install.ps1
+
+# macOS / Linux
+bash install.sh</code></pre>
+</section>
+
+<section>
+  <h2>Security notes</h2>
+  <div class="security">
+    <ul>
+      <li><strong>The install scripts are plain text.</strong> Open them and read every line before running — they only download release files from this repo's releases page, nothing else.</li>
+      <li><strong>Verify the downloads.</strong> Each release ships a <code>SHA256SUMS</code> file; check the hashes before installing.</li>
+      <li><strong>Chrome installs are manual.</strong> Chrome doesn't allow silent extension installs — you load it yourself in <code>chrome://extensions</code>, so nothing can sneak in.</li>
+      <li><strong>No admin rights needed.</strong> Everything installs into your own user folders.</li>
+      <li><strong>Your API keys stay yours.</strong> In Chrome the key lives in the browser's local storage (not encrypted at rest — use a dedicated key you can rotate); in VS Code it lives in the OS keychain via SecretStorage. Keys are only ever sent to <code>api.anthropic.com</code>, only when you ask.</li>
+      <li><strong>No backend, no accounts, no telemetry.</strong> Nothing phones home.</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  <p>Source: <a href="https://github.com/PrachiDPatel/lens">github.com/PrachiDPatel/lens</a></p>
+</footer>
+
+</main>
+</body>
+</html>
